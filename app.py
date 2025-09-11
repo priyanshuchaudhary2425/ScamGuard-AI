@@ -1,33 +1,29 @@
 from flask import Flask, request, jsonify, render_template
 import os
-import torch
 import time
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
+import torch
 import torch.nn.functional as F
-
-app = Flask(__name__)
-app.secret_key = os.urandom(24)  # keep a secret key for Flask sessions if needed
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
 MODEL_NAME = "Priyanshuchaudhary2425/ScamGuard"
-
-# Attempt to load from local cache if available, otherwise download from HF hub
-model_cache_path = os.path.join(os.path.expanduser("~"), ".cache", "huggingface", "hub", MODEL_NAME.replace("/", "_"))
-
-if os.path.exists(model_cache_path):
-    print("✅ Loading model from local cache...")
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, local_files_only=True)
-    model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, local_files_only=True)
-else:
-    print("🔄 Downloading model from Hugging Face Hub...")
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-    model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME)
-
-model.eval()
-print("✅ ScamGuard model ready")
-
-# Map label ids to readable labels
 label_map = {0: "Not Scam", 1: "Scam"}
 
+# Simple cache path attempt (optional) - keeps behavior similar to your original
+model_cache_path = os.path.join(os.path.expanduser("~"), ".cache", "huggingface", "hub", MODEL_NAME.replace("/", "_"))
+
+print("Loading tokenizer and model (this may take a while if not cached)...")
+try:
+    if os.path.exists(model_cache_path):
+        tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, local_files_only=True)
+        model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, local_files_only=True)
+    else:
+        tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+        model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME)
+    model.eval()
+    print("✅ Model loaded.")
+except Exception as e:
+    print("❌ Failed loading model:", e)
+    raise
 
 def predict_scam(texts: list[str]):
     inputs = tokenizer(texts, return_tensors="pt", padding=True, truncation=True)
@@ -38,7 +34,6 @@ def predict_scam(texts: list[str]):
         confidences, predicted_classes = torch.max(probs, dim=1)
     end = time.time()
     inference_time = (end - start) * 1000
-
     results = []
     for i in range(len(texts)):
         label = label_map[predicted_classes[i].item()]
@@ -50,11 +45,11 @@ def predict_scam(texts: list[str]):
         })
     return results, round(inference_time, 2)
 
+app = Flask(__name__)
 
 @app.route('/')
 def index():
     return render_template('index.html')
-
 
 @app.route('/predict', methods=['POST'])
 def predict():
@@ -66,11 +61,7 @@ def predict():
         return jsonify({'error': 'No texts provided or invalid format'}), 400
 
     results, inference_time = predict_scam(texts)
-    return jsonify({
-        'results': results,
-        'inference_time': inference_time
-    })
-
+    return jsonify({'results': results, 'inference_time': inference_time})
 
 if __name__ == '__main__':
     app.run(debug=True)
