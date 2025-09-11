@@ -10,28 +10,10 @@
     <div class="container mx-auto p-4">
         <div class="flex justify-between items-center mb-8">
             <h1 class="text-3xl font-bold">ScamGuard</h1>
-            <div id="auth-section">
-                {% if user %}
-                    <div class="flex items-center">
-                        {% if user.avatar_url %}
-                            <img src="{{ user.avatar_url }}" alt="Profile" class="w-8 h-8 rounded-full mr-3">
-                        {% endif %}
-                        <div class="mr-4">
-                            {% if user.name %}
-                                <p class="font-semibold">{{ user.name }}</p>
-                            {% endif %}
-                            <p class="text-sm text-gray-600">{{ user.email }}</p>
-                        </div>
-                        <a href="/logout" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">Logout</a>
-                    </div>
-                {% else %}
-                    <a href="/login" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">Login with Google</a>
-                {% endif %}
-            </div>
         </div>
 
         <div class="max-w-lg mx-auto bg-white p-6 rounded-lg shadow-lg">
-            <form id="scam-form" >
+            <form id="scam-form">
                 <div class="mb-4">
                     <label for="message" class="block text-gray-700 font-bold mb-2">Enter messages (one per line):</label>
                     <textarea id="message" name="message" rows="10" class="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none" placeholder="Enter messages to check, one per line..."></textarea>
@@ -40,11 +22,7 @@
                     <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none">Check Messages</button>
                 </div>
             </form>
-            
-            {% if not user %}
-            <p id="login-prompt" class="text-red-500 text-center mt-4">Please login to use the prediction service.</p>
-            {% endif %}
-            
+
             <div id="result" class="mt-6"></div>
         </div>
     </div>
@@ -52,15 +30,11 @@
     <script>
         const form = document.getElementById('scam-form');
         const resultDiv = document.getElementById('result');
-        const user = {{ user | tojson }};
 
         if (form) {
             form.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                if (!user) {
-                    resultDiv.innerHTML = '<p class="text-red-500 text-center">Please login to check messages.</p>';
-                    return;
-                }
+
                 const messages = document.getElementById('message').value.split('\n').filter(line => line.trim() !== '');
                 if (messages.length === 0) {
                     resultDiv.innerHTML = '<p class="text-red-500 text-center">Please enter at least one message.</p>';
@@ -68,34 +42,44 @@
                 }
                 resultDiv.innerHTML = '<p class="text-center">Checking...</p>';
 
-                const response = await fetch('/predict', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ texts: messages })
-                });
-
-                const result = await response.json();
-                resultDiv.innerHTML = ''; // Clear the checking message
-
-                if (result.error) {
-                    resultDiv.innerHTML = `<p class="text-red-500 text-center">${result.error}</p>`;
-                } else {
-                    let resultsHTML = `<p class="text-center text-sm text-gray-500 mb-4">Total Inference Time: ${result.inference_time}ms</p>`;
-                    result.results.forEach(res => {
-                        const isScam = res.label === 'Scam';
-                        const resultColor = isScam ? 'text-red-500' : 'text-green-500';
-
-                        resultsHTML += `
-                            <div class="p-4 rounded-lg ${isScam ? 'bg-red-100' : 'bg-green-100'} mb-4">
-                                <p class="text-lg font-bold ${resultColor}">${res.label}</p>
-                                <p><strong>Text:</strong> ${res.text}</p>
-                                <p>Confidence: ${(res.confidence * 100).toFixed(2)}%</p>
-                            </div>
-                        `;
+                try {
+                    const response = await fetch('/predict', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ texts: messages })
                     });
-                    resultDiv.innerHTML = resultsHTML;
+
+                    if (!response.ok) {
+                        const err = await response.json().catch(() => ({}));
+                        resultDiv.innerHTML = `<p class="text-red-500 text-center">${err.error || 'Prediction request failed'}</p>`;
+                        return;
+                    }
+
+                    const result = await response.json();
+                    resultDiv.innerHTML = ''; // Clear the checking message
+
+                    if (result.error) {
+                        resultDiv.innerHTML = `<p class="text-red-500 text-center">${result.error}</p>`;
+                    } else {
+                        let resultsHTML = `<p class="text-center text-sm text-gray-500 mb-4">Total Inference Time: ${result.inference_time}ms</p>`;
+                        result.results.forEach(res => {
+                            const isScam = res.label === 'Scam';
+                            const resultColor = isScam ? 'text-red-500' : 'text-green-500';
+
+                            resultsHTML += `
+                                <div class="p-4 rounded-lg ${isScam ? 'bg-red-100' : 'bg-green-100'} mb-4">
+                                    <p class="text-lg font-bold ${resultColor}">${res.label}</p>
+                                    <p><strong>Text:</strong> ${res.text}</p>
+                                    <p>Confidence: ${(res.confidence * 100).toFixed(2)}%</p>
+                                </div>
+                            `;
+                        });
+                        resultDiv.innerHTML = resultsHTML;
+                    }
+                } catch (error) {
+                    resultDiv.innerHTML = `<p class="text-red-500 text-center">Network error: ${error.message}</p>`;
                 }
             });
         }
