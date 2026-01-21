@@ -23,7 +23,10 @@ Follow these steps to get the application running on your local machine.
 ```bash
 git clone https://github.com/priyanshuchaudhary2425/ScamGuard-AI.git
 cd ScamGuard-AI
+python app.py
 ```
+
+after this run on [localhost](http://127.0.0.1:5000)
 
 
 ### ► Project File Structure
