@@ -19,43 +19,13 @@ The core of our solution is the **`ScamGuard`** model, a fine-tuned version of `
 
 Follow these steps to get the application running on your local machine.
 
-**1. Clone the Repository**
+**1. Run the APP**
 ```bash
 git clone https://github.com/priyanshuchaudhary2425/ScamGuard-AI.git
-cd ScamGuard-AI
-```
-
-**2. Create and Activate a Virtual Environment**
-```bash
-# For Windows
-python -m venv venv
-venv\Scripts\activate
-
-# For macOS/Linux
-python3 -m venv venv
-source venv/bin/activate
-```
-
-**3. Install Dependencies**
-First, make sure you have created a `requirements.txt` file. You can generate it with the following command in your activated virtual environment:
-```bash
-pip freeze > requirements.txt
-```
-Then, install the required packages:
-```bash
-pip install -r requirements.txt
-```
-*(Note: The first run might take some time to download the Hugging Face model).*
-
-**4. Run the Flask Application**
-```bash
+cd app.py
 python app.py
 ```
 
-**5. Open in Browser**
-Navigate to `http://127.0.0.1:5000` in your web browser to start using ScamGuard AI.
-
----
 
 ### ► Project File Structure
 ```
