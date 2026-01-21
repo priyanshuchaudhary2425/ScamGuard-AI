@@ -22,8 +22,7 @@ Follow these steps to get the application running on your local machine.
 **1. Run the APP**
 ```bash
 git clone https://github.com/priyanshuchaudhary2425/ScamGuard-AI.git
-cd app.py
-python app.py
+cd ScamGuard-AI
 ```
 
 
